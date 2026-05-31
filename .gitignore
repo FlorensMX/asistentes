@@ -1,0 +1,127 @@
+# ======================================================================
+#  .gitignore — Sistema de Gestión Ministerial
+#  Stack: PHP 8.x procedural + PostgreSQL + Nginx (sin Composer).
+#  Despliegue: montesion.cloud/apps/asistentes
+#
+#  Regla de oro: se versiona el CÓDIGO y los TEMPLATES; nunca secretos,
+#  datos de usuarios (fotos), artefactos de runtime ni basura del entorno.
+# ======================================================================
+
+# ----------------------------------------------------------------------
+#  Secretos / configuración local
+# ----------------------------------------------------------------------
+# config/config.php tiene credenciales de la BD. NUNCA debe commitearse.
+# El único template versionado es config.example.php (negación explícita).
+config/config.php
+config/*.local.php
+
+!config/config.example.php
+
+# Variables de entorno (por si en el futuro se usan). Se versiona el ejemplo.
+.env
+.env.*
+!.env.example
+
+# Claves, certificados y credenciales sueltas que nunca deben filtrarse.
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets.php
+*credentials*.json
+
+# ----------------------------------------------------------------------
+#  Datos de usuarios — Fotos familiares de los asistentes
+# ----------------------------------------------------------------------
+# public/fotos_asistentes/{id}.{ext} — las sube cada asistente desde su
+# perfil. Son datos personales: NO se versionan. Solo se conserva el
+# directorio mediante .gitkeep para que exista tras un clone.
+public/fotos_asistentes/*
+!public/fotos_asistentes/.gitkeep
+
+# Cualquier otro directorio de subidas que se agregue a futuro.
+public/uploads/*
+!public/uploads/.gitkeep
+
+# ----------------------------------------------------------------------
+#  Base de datos — volcados y respaldos locales
+# ----------------------------------------------------------------------
+# El esquema y los seeds viven en migrations/ y SÍ se versionan.
+# Los dumps con datos reales NO (pueden contener datos personales).
+*.sql.gz
+*.dump
+*.pgdump
+*.backup
+dumps/
+backups/
+db_backups/
+
+# ----------------------------------------------------------------------
+#  Logs y artefactos de runtime
+# ----------------------------------------------------------------------
+*.log
+logs/
+sessions/                  # si algún día se usa file-based session storage
+tmp/
+cache/
+*.pid
+
+# ----------------------------------------------------------------------
+#  PHP / Composer (no se usa hoy, pero blindamos por si se adopta)
+# ----------------------------------------------------------------------
+/vendor/
+composer.phar
+.phpunit.result.cache
+.php-cs-fixer.cache
+.phpcs-cache
+
+# ----------------------------------------------------------------------
+#  Herramientas Node / build (solo si en el futuro se compila Tailwind)
+#  Hoy Tailwind se sirve por CDN, así que normalmente no aplica.
+# ----------------------------------------------------------------------
+/node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ----------------------------------------------------------------------
+#  Backups y comprimidos sueltos
+# ----------------------------------------------------------------------
+*.bak
+*.old
+*.orig
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+
+# ----------------------------------------------------------------------
+#  Sistema operativo
+# ----------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ----------------------------------------------------------------------
+#  Editores / IDEs
+# ----------------------------------------------------------------------
+*.swp
+*.swo
+*~
+*.sublime-workspace
+.idea/
+.vscode/
+.fleet/
+.nova/
+
+# ----------------------------------------------------------------------
+#  Herramientas de IA / agentes (config local, no del proyecto)
+# ----------------------------------------------------------------------
+# La config compartida (.claude/settings.json) se versiona si se decide;
+# la local de cada quien no.
+.claude/settings.local.json
