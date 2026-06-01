@@ -35,7 +35,7 @@ if (!$d || $d->format('Y-m-d') !== $fecha) {
 }
 
 // El culto debe existir y estar activo.
-$stmt = db()->prepare('SELECT dia_semana, fin_variable FROM cultos WHERE id = :id AND activo = TRUE');
+$stmt = db()->prepare('SELECT dia_semana, fin_variable, hora_inicio FROM cultos WHERE id = :id AND activo = TRUE');
 $stmt->execute(['id' => $cultoId]);
 $culto = $stmt->fetch();
 if (!$culto) {
@@ -48,11 +48,16 @@ if ($asistio && estaEnCampania($uid, $fecha)) {
     jsonError('Ese día está en campaña (suspendido): sus cultos no se piden ni cuentan.', 409);
 }
 
-// hora_salida solo aplica a cultos de fin variable (Junta de Asistentes).
+// hora_salida solo aplica a cultos de fin variable (Junta de Asistentes), que se
+// asume ocurren en un mismo día (cierto para la Junta, 11:30).
 $horaSalidaVal = null;
 if ((bool) $culto['fin_variable'] && $horaSalida !== '') {
     if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $horaSalida)) {
         jsonError('Hora de salida inválida.');
+    }
+    // La salida debe ser POSTERIOR al inicio del culto: ataja el typo en captura.
+    if (substr($horaSalida, 0, 5) <= substr((string) $culto['hora_inicio'], 0, 5)) {
+        jsonError('La hora de salida debe ser posterior a la hora de inicio del culto.');
     }
     $horaSalidaVal = $horaSalida;
 }

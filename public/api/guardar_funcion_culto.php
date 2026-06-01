@@ -51,9 +51,9 @@ if (!$d || $d->format('Y-m-d') !== $fecha) {
     jsonError('Fecha inválida.');
 }
 
-// El culto debe existir y estar activo. Tomamos dia_semana y fin_variable.
+// El culto debe existir y estar activo. Tomamos dia_semana, fin_variable y hora_inicio.
 $stmt = db()->prepare(
-    'SELECT dia_semana, fin_variable FROM cultos WHERE id = :id AND activo = TRUE'
+    'SELECT dia_semana, fin_variable, hora_inicio FROM cultos WHERE id = :id AND activo = TRUE'
 );
 $stmt->execute(['id' => $cultoId]);
 $culto = $stmt->fetch();
@@ -77,10 +77,19 @@ if ($asistio && estaEnCampania($uid, $fecha)) {
 $finVariable = (bool) $culto['fin_variable'];
 
 // hora_salida: solo tiene sentido en cultos de fin variable (Junta de Asistentes).
+// Se asume que el culto de fin variable ocurre en un mismo día (cierto para la
+// Junta, 11:30). Si algún día se agrega un culto de fin variable nocturno que
+// cruce medianoche a propósito, habría que revisar esta regla.
 $horaSalidaVal = null;
 if ($finVariable && $horaSalida !== '') {
     if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $horaSalida)) {
         jsonError('Hora de salida inválida.');
+    }
+    // La salida debe ser POSTERIOR al inicio del culto: ataja el typo en captura
+    // (p. ej. 00:30 por 13:00, que el agregado inflaría a ~13 h). Ambas quedan en
+    // "HH:MM" con cero a la izquierda, así que el orden alfabético == cronológico.
+    if (substr($horaSalida, 0, 5) <= substr((string) $culto['hora_inicio'], 0, 5)) {
+        jsonError('La hora de salida debe ser posterior a la hora de inicio del culto.');
     }
     $horaSalidaVal = $horaSalida;
 }
