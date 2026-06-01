@@ -29,7 +29,9 @@
 #   PSQL="psql -U asi_app -d asistentes" \
 #   bash scripts/smoke_fase3_http.sh
 #
-set -euo pipefail
+# Sólo 'set -u' (sin '-e'/'pipefail'): así un grep que NO encuentra el token
+# CSRF no mata el script en silencio, sino que cae al diagnóstico de abajo.
+set -u
 
 BASE_URL="${BASE_URL:?define BASE_URL (p.ej. https://montesion.cloud/apps/asistentes)}"
 TEST_USER="${TEST_USER:?define TEST_USER (asistente de prueba)}"
@@ -54,17 +56,35 @@ echo "usuario=${TEST_USER}(id=${AID})  culto=${CULTO}  fecha=${FECHA}"
 
 echo "== Login =="
 LOGIN_HTML="$(curl -s -c "$JAR" "${BASE_URL}/login.php")"
-CSRF_LOGIN="$(echo "$LOGIN_HTML" | grep -oE 'name="csrf"[^>]*value="[^"]+"' | grep -oE 'value="[^"]+"' | head -1 | sed 's/.*value="//; s/"//')"  # <-- AJUSTA (campo csrf del login)
+
+# Extrae el token CSRF del login probando los patrones más comunes (input
+# hidden y <meta>, varios nombres de campo). Sin set -e, un no-match queda
+# vacío y NO aborta.
+csrf_from() { printf '%s' "$1" | grep -oiE "$2" | head -1 | sed -E 's/.*(value|content)="//; s/".*//'; }
+CSRF_LOGIN="$(csrf_from "$LOGIN_HTML" 'name="(csrf|csrf_token|_csrf|csrf-token)"[^>]*value="[^"]+"')"
+[ -n "$CSRF_LOGIN" ] || CSRF_LOGIN="$(csrf_from "$LOGIN_HTML" 'value="[^"]+"[^>]*name="(csrf|csrf_token|_csrf)"')"
+[ -n "$CSRF_LOGIN" ] || CSRF_LOGIN="$(csrf_from "$LOGIN_HTML" 'name="csrf-token"[^>]*content="[^"]+"')"
+
 curl -s -b "$JAR" -c "$JAR" \
   --data-urlencode "usuario=${TEST_USER}" \
   --data-urlencode "password=${TEST_PASS}" \
   --data-urlencode "csrf=${CSRF_LOGIN}" \
-  "${BASE_URL}/login.php" -o /dev/null            # <-- AJUSTA (nombres usuario/password de tu form)
+  "${BASE_URL}/login.php" -o /dev/null            # <-- AJUSTA nombres usuario/password si tu form usa otros
 
-# Token CSRF de sesión para las APIs (del <meta> de una página autenticada)
-CSRF="$(curl -s -b "$JAR" "${BASE_URL}/semana.php" \
-        | grep -oE 'name="csrf-token"[^>]*content="[^"]+"' | grep -oE 'content="[^"]+"' | head -1 | sed 's/.*content="//; s/"//')"
-if [ -z "$CSRF" ]; then ko "No pude leer el CSRF de sesión (¿login falló o cambió el <meta>?)"; echo "Resumen: $pass OK / $fail fallas"; exit 1; fi
+# Token CSRF de sesión para las APIs (del <meta> de una página autenticada).
+SEM_HTML="$(curl -s -b "$JAR" "${BASE_URL}/semana.php")"
+CSRF="$(printf '%s' "$SEM_HTML" | grep -oiE 'name="csrf-token"[^>]*content="[^"]+"' | head -1 | sed -E 's/.*content="//; s/".*//')"
+
+if [ -z "$CSRF" ]; then
+  ko "No obtuve sesión autenticada."
+  echo "   ---- token CSRF leído del login: '${CSRF_LOGIN:-(vacío)}'"
+  echo "   ---- ¿login.php trae algo con 'csrf'? (primeras coincidencias):"
+  printf '%s' "$LOGIN_HTML" | grep -ioE '.{0,40}csrf.{0,60}' | head -3 || true
+  echo "   ---- ¿semana.php nos devolvió la página de login? (= el login falló):"
+  printf '%s' "$SEM_HTML" | grep -ioE '(type="password"|name="usuario"|iniciar sesión)' | head -3 || true
+  echo "   Ajusta los campos/patrón de arriba, o pégame estas líneas y lo afino."
+  echo; echo "RESULTADO HTTP: $pass OK / $fail fallas"; exit 1
+fi
 ok "Login + CSRF de sesión obtenidos"
 
 # api <endpoint> <flags curl...>  -> imprime cuerpo; deja status en $HTTP
