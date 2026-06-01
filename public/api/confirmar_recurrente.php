@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/api.php';
 require_once __DIR__ . '/../../includes/recurrentes_repo.php';
+require_once __DIR__ . '/../../includes/campanias_repo.php';
 
 $u = apiInit();
 
@@ -29,6 +30,11 @@ if (!$d || $d->format('Y-m-d') !== $fecha) {
 }
 if (!recurrenteEsDe($compromisoId, (int) $u['id'])) {
     jsonError('Ese compromiso no es tuyo.', 403);
+}
+// Suspensión por campaña: en días dentro de un periodo del asistente, los
+// recurrentes "no se piden ni cuentan". No se permite confirmarlos (sí desmarcar).
+if ($confirmado && estaEnCampania((int) $u['id'], $fecha)) {
+    jsonError('Ese día está en campaña (suspendido): tus recurrentes no se piden ni cuentan.', 409);
 }
 
 try {

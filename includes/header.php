@@ -35,6 +35,7 @@ $navAsistente = [
 ];
 $navPastor = [
     ['consolidado', 'Consolidado', 'consolidado.php'],
+    ['catalogos',   'Catálogos',   'admin_catalogos.php'],
     ['perfil',      'Perfil',      'perfil.php'],
 ];
 $navAdmin = [
