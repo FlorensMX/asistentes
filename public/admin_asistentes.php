@@ -32,9 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pass    = (string) ($_POST['password'] ?? '');
                     $tel     = (string) ($_POST['telefono'] ?? '');
                     if ($nombre === '' || $usr === '') {
-                        $error = 'Nombre y usuario son obligatorios.';
-                    } elseif (!preg_match('/^[a-z0-9._-]{3,60}$/', $usr)) {
-                        $error = 'Usuario inválido (3-60 chars: letras, números, . _ -).';
+                        $error = 'Nombre y correo son obligatorios.';
+                    } elseif (!filter_var($usr, FILTER_VALIDATE_EMAIL)) {
+                        $error = 'Correo inválido.';
                     } elseif (!in_array($rol, ROLES_VALIDOS, true)) {
                         $error = 'Rol inválido.';
                     } elseif (strlen($pass) < 8) {

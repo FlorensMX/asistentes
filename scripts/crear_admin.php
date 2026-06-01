@@ -52,7 +52,7 @@ echo "  Crear usuario — Sistema de Gestión Ministerial\n";
 echo "═══════════════════════════════════════════════════════════════════════\n\n";
 
 $nombre  = $flags['nombre']  ?? leerLinea('Nombre completo: ');
-$usuario = strtolower($flags['usuario'] ?? leerLinea('Usuario (para entrar): '));
+$usuario = strtolower($flags['usuario'] ?? leerLinea('Email (con el que entrará): '));
 $rol     = strtolower($flags['rol']     ?? leerLinea('Rol [admin|pastor|asistente] (default: admin): '));
 if ($rol === '') $rol = 'admin';
 
@@ -62,8 +62,8 @@ if ($rol === '') $rol = 'admin';
 if ($nombre === '') {
     fwrite(STDERR, "ERROR: nombre vacío.\n"); exit(1);
 }
-if (!preg_match('/^[a-z0-9._-]{3,60}$/', $usuario)) {
-    fwrite(STDERR, "ERROR: usuario inválido (3-60 chars: letras, números, . _ -).\n"); exit(1);
+if (!filter_var($usuario, FILTER_VALIDATE_EMAIL)) {
+    fwrite(STDERR, "ERROR: email inválido.\n"); exit(1);
 }
 if (!in_array($rol, ['admin', 'pastor', 'asistente'], true)) {
     fwrite(STDERR, "ERROR: rol debe ser 'admin', 'pastor' o 'asistente'.\n"); exit(1);
@@ -98,7 +98,7 @@ try {
     $stmt->execute(['n' => $nombre, 'u' => $usuario, 'p' => $hash, 'r' => $rol]);
     $id = $stmt->fetchColumn();
     echo "\n✓ Usuario creado:  id=$id  usuario=$usuario  rol=$rol\n";
-    echo "  Entra en https://montesion.cloud/apps/asistentes/login.php\n";
+    echo "  Entra en https://montesion.cloud/asistentes/login.php\n";
 } catch (PDOException $e) {
     if ($e->getCode() === '23505') { // unique violation
         fwrite(STDERR, "ERROR: ya existe un usuario '$usuario'.\n");
