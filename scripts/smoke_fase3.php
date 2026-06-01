@@ -231,7 +231,7 @@ try {
         'F2 actividad con lleva_fruto=true conserva la etiqueta');
 
     fijarActivoActividad($actCon, false);
-    eq('f', (string) scalar('SELECT activo::text FROM actividades WHERE id = :i', ['i' => $actCon]),
+    eq(1, (int) scalar('SELECT count(*) FROM actividades WHERE id = :i AND activo = FALSE', ['i' => $actCon]),
         'F3 fijarActivoActividad(false) => activo=false (borrado suave)');
     $idsAct = array_map('intval', array_column(listarActividades(null, true), 'id'));
     check(!in_array($actCon, $idsAct, true), 'F3 listarActividades(soloActivas=true) excluye la inactiva');
