@@ -20,7 +20,7 @@ return [
     'app' => [
         // Subpath de despliegue en el dominio. Debe coincidir con BASE_PATH
         // en includes/auth.php y con el front-controller @asifront de nginx.
-        'base_url'  => 'https://montesion.cloud/apps/asistentes',
+        'base_url'  => 'https://montesion.cloud/asistentes',
         'fotos_dir' => __DIR__ . '/../public/fotos_asistentes',
         'debug'     => false,
     ],

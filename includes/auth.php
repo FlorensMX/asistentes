@@ -23,7 +23,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/conexion.php';
 
 /** Subpath base del sistema en el dominio. Si se mueve, se cambia aquí. */
-const BASE_PATH = '/apps/asistentes';
+const BASE_PATH = '/asistentes';
 
 /**
  * Inicia sesión con parámetros scoped al subpath. Idempotente.
