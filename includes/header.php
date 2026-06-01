@@ -31,6 +31,7 @@ $navAsistente = [
     ['semana',      'Semana',     'semana.php'],
     ['actividad',   'Registrar',  'actividad.php'],
     ['ministerios', 'Ministerios','ministerios.php'],
+    ['dashboard',   'Resumen',    'mi_dashboard.php'],
     ['perfil',      'Perfil',     'perfil.php'],
 ];
 $navPastor = [
@@ -39,9 +40,10 @@ $navPastor = [
     ['perfil',      'Perfil',      'perfil.php'],
 ];
 $navAdmin = [
-    ['asistentes', 'Asistentes', 'admin_asistentes.php'],
-    ['catalogos',  'Catálogos',  'admin_catalogos.php'],
-    ['perfil',     'Perfil',     'perfil.php'],
+    ['asistentes',  'Asistentes',  'admin_asistentes.php'],
+    ['catalogos',   'Catálogos',   'admin_catalogos.php'],
+    ['consolidado', 'Consolidado', 'consolidado.php'],
+    ['perfil',      'Perfil',      'perfil.php'],
 ];
 $nav = $rol === 'admin' ? $navAdmin : ($rol === 'pastor' ? $navPastor : $navAsistente);
 ?>

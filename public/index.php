@@ -19,8 +19,7 @@ switch ($u['rol']) {
         header('Location: admin_asistentes.php');
         break;
     case 'pastor':
-        // El consolidado del Pastor llega en Fase 4; por ahora a su perfil.
-        header('Location: perfil.php');
+        header('Location: consolidado.php');
         break;
     default: // asistente
         header('Location: semana.php');
