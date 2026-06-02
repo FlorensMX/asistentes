@@ -223,6 +223,16 @@ require __DIR__ . '/../includes/header.php';
           <?php if ($c['fruto_cantidad'] !== null): ?>
             <div class="text-xs text-emerald-700 mt-0.5">Fruto declarado: <?= (int) $c['fruto_cantidad'] ?></div>
           <?php endif; ?>
+          <?php // Estado del reporte: dato NEUTRAL (informa, no juzga). Sin bandera ni color de juicio.
+                $subRep = $c['reporte_subido_en'] ? substr((string) $c['reporte_subido_en'], 0, 10) : null; ?>
+          <div class="text-xs text-slate-500 mt-0.5">
+            <?php if ($c['reporte_ruta']): ?>
+              Reporte: subido<?= $subRep ? ' (' . h($subRep) . ')' : '' ?>
+              · <a href="api/descargar_reporte_campania.php?campania_id=<?= (int) $c['id'] ?>" class="text-emerald-700 hover:text-emerald-900 underline">descargar</a>
+            <?php else: ?>
+              Reporte: pendiente
+            <?php endif; ?>
+          </div>
         </li>
       <?php endforeach; ?>
     </ul>

@@ -33,6 +33,7 @@ function campaniasDeAsistente(int $asistenteId, ?string $desde = null, ?string $
 {
     $sql = 'SELECT p.id, p.categoria_id, p.fecha_inicio, p.fecha_fin,
                    p.lugar, p.descripcion, p.fruto_cantidad, p.creado_en,
+                   p.reporte_ruta, p.reporte_nombre, p.reporte_subido_en,
                    c.nombre AS categoria
             FROM periodos_campania p
             LEFT JOIN categorias c ON c.id = p.categoria_id
@@ -56,6 +57,7 @@ function campaniaPorId(int $id, int $asistenteId): ?array
     $stmt = db()->prepare(
         'SELECT p.id, p.categoria_id, p.fecha_inicio, p.fecha_fin,
                 p.lugar, p.descripcion, p.fruto_cantidad, p.creado_en,
+                p.reporte_ruta, p.reporte_nombre, p.reporte_subido_en,
                 c.nombre AS categoria
          FROM periodos_campania p
          LEFT JOIN categorias c ON c.id = p.categoria_id
@@ -64,6 +66,22 @@ function campaniaPorId(int $id, int $asistenteId): ?array
     $stmt->execute(['id' => $id, 'a' => $asistenteId]);
     $p = $stmt->fetch();
     return $p ?: null;
+}
+
+/**
+ * Datos del reporte de una campaña por id, SIN restringir al dueño (lo usa la
+ * descarga, que decide el permiso aparte: pastor/admin o el propio dueño).
+ * Devuelve asistente_id + columnas del reporte, o null si la campaña no existe.
+ */
+function reporteDeCampania(int $id): ?array
+{
+    $stmt = db()->prepare(
+        'SELECT asistente_id, reporte_ruta, reporte_nombre, reporte_subido_en
+         FROM periodos_campania WHERE id = :id'
+    );
+    $stmt->execute(['id' => $id]);
+    $r = $stmt->fetch();
+    return $r ?: null;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,6 +156,27 @@ function eliminarCampania(int $id, int $asistenteId): bool
         'DELETE FROM periodos_campania WHERE id = :id AND asistente_id = :a'
     );
     $stmt->execute(['id' => $id, 'a' => $asistenteId]);
+    return $stmt->rowCount() > 0;
+}
+
+/**
+ * Apunta el reporte de resultados de una campaña a su archivo en disco (nombre
+ * dentro de storage/, no ruta absoluta) y sella reporte_subido_en = now().
+ * Solo afecta si la campaña es del asistente. true si actualizó una fila.
+ */
+function guardarRutaReporte(int $id, int $asistenteId, string $archivo, string $nombre): bool
+{
+    $stmt = db()->prepare(
+        'UPDATE periodos_campania
+            SET reporte_ruta = :ruta, reporte_nombre = :nombre, reporte_subido_en = now()
+          WHERE id = :id AND asistente_id = :a'
+    );
+    $stmt->execute([
+        'ruta'   => $archivo,
+        'nombre' => $nombre,
+        'id'     => $id,
+        'a'      => $asistenteId,
+    ]);
     return $stmt->rowCount() > 0;
 }
 

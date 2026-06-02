@@ -44,6 +44,13 @@ public/fotos_asistentes/*
 public/uploads/*
 !public/uploads/.gitkeep
 
+# Reportes de resultados de campaña — los sube cada asistente y pueden traer
+# datos más sensibles que la foto familiar. Se guardan FUERA de public/
+# (almacenamiento protegido, no servido por nginx). NO se versionan; solo se
+# conserva el directorio con .gitkeep.
+storage/reportes_campania/*
+!storage/reportes_campania/.gitkeep
+
 # ----------------------------------------------------------------------
 #  Base de datos — volcados y respaldos locales
 # ----------------------------------------------------------------------

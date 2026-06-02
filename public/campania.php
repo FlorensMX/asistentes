@@ -140,6 +140,31 @@ require __DIR__ . '/../includes/header.php';
               <button class="js-eliminar text-rose-600 text-sm" data-id="<?= (int) $c['id'] ?>">Eliminar</button>
             </div>
           </div>
+
+          <?php $subidoFecha = $c['reporte_subido_en'] ? substr((string) $c['reporte_subido_en'], 0, 10) : null; ?>
+          <div class="mt-3 pt-3 border-t border-slate-100">
+            <div class="flex items-center justify-between gap-2 text-xs">
+              <?php if ($c['reporte_ruta']): ?>
+                <span class="text-slate-600">
+                  Reporte: <span class="text-slate-800 font-medium">subido<?= $subidoFecha ? ' el ' . h($subidoFecha) : '' ?></span>
+                  · <a href="api/descargar_reporte_campania.php?campania_id=<?= (int) $c['id'] ?>" class="text-emerald-700 underline">descargar</a>
+                </span>
+                <label class="text-slate-500 underline cursor-pointer shrink-0">
+                  Reemplazar
+                  <input type="file" class="hidden js-reporte-input" data-id="<?= (int) $c['id'] ?>"
+                         accept="application/pdf,image/jpeg,image/png,image/heic,image/heif">
+                </label>
+              <?php else: ?>
+                <span class="text-slate-500">Reporte: <span class="text-slate-400">pendiente</span></span>
+                <label class="text-emerald-700 underline cursor-pointer shrink-0">
+                  Subir reporte
+                  <input type="file" class="hidden js-reporte-input" data-id="<?= (int) $c['id'] ?>"
+                         accept="application/pdf,image/jpeg,image/png,image/heic,image/heif">
+                </label>
+              <?php endif; ?>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">PDF, JPG, PNG o HEIC. Máx 10 MB.</p>
+          </div>
         </li>
       <?php endforeach; ?>
     </ul>
@@ -209,6 +234,37 @@ require __DIR__ . '/../includes/header.php';
       } catch (e) {
         mostrarMsg('Error de red. Intenta de nuevo.', false);
         b.disabled = false;
+      }
+    });
+  });
+
+  // Subida/reemplazo del reporte de resultados de una campaña.
+  document.querySelectorAll('.js-reporte-input').forEach(inp => {
+    inp.addEventListener('change', async () => {
+      const file = inp.files[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('csrf', csrf);
+      fd.append('campania_id', inp.dataset.id);
+      fd.append('reporte', file);
+      mostrarMsg('Subiendo reporte…', true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      inp.disabled = true;
+      try {
+        const r = await fetch('api/subir_reporte_campania.php', { method: 'POST', body: fd });
+        const j = await r.json();
+        if (j.ok) {
+          mostrarMsg('Reporte subido.', true);
+          setTimeout(() => location.reload(), 600);
+        } else {
+          mostrarMsg(j.error || 'No se pudo subir el reporte.', false);
+          inp.disabled = false;
+          inp.value = '';
+        }
+      } catch (e) {
+        mostrarMsg('Error de red al subir el reporte.', false);
+        inp.disabled = false;
+        inp.value = '';
       }
     });
   });

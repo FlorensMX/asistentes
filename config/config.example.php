@@ -22,6 +22,10 @@ return [
         // en includes/auth.php y con el front-controller @asifront de nginx.
         'base_url'  => 'https://montesion.cloud/asistentes',
         'fotos_dir' => __DIR__ . '/../public/fotos_asistentes',
+        // Reportes de resultados de campaña: FUERA de public/ (no servidos por
+        // nginx). La descarga siempre pasa por un endpoint PHP con guard de rol.
+        // Si se omite, includes/reportes_campania.php usa este mismo default.
+        'reportes_dir' => __DIR__ . '/../storage/reportes_campania',
         'debug'     => false,
     ],
 ];
