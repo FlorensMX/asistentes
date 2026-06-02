@@ -22,8 +22,8 @@
  *     ⇒ recurrentes netos = 4 h   (sin exclusión serían 6 h)
  *   Actividad "Ganar almas" (Evangelismo, contactos), ministerio M
  *     · 03-06  90 min → 1.5 h, fruto 4, proyecto P
- *     · 03-21  60 min → 1.0 h, fruto 2  (EN CAMPAÑA pero §10.1: SÍ cuenta)
- *     ⇒ actividad = 2.5 h ; contactos = 6
+ *     · 03-21  60 min → 1.0 h, fruto 2  (EN CAMPAÑA → EXCLUIDO, §10.1 cerrada)
+ *     ⇒ actividad = 1.5 h ; contactos = 4   (el 03-21 ya no cuenta)
  *   Cultos
  *     · Miércoles 03-05 (19:30–21:00) → 1.5 h, 1 asistencia
  *     · Junta 03-08, salida 13:30 (fin_variable) → 2.0 h, 1 asistencia
@@ -36,10 +36,10 @@
  *   Campaña 03-20…03-22, fruto 7  ⇒ días de misión = 3 ; fruto_campanias = 7
  *   Secular 20 h/sem
  *
- *   ⇒ horas_total = categorías(6.5) + cultos(3.5) = 10.0
- *      Este único número valida a la vez: exclusión de recurrentes y cultos en
- *      campaña, §10.1 (actividad SÍ cuenta), fin_variable con hora_salida, y la
- *      duración de un culto normal.
+ *   ⇒ horas_total = categorías(5.5) + cultos(3.5) = 9.0
+ *      Este único número valida a la vez: exclusión por campaña de recurrentes,
+ *      cultos Y actividad variable (§10.1 cerrada: la actividad del 03-21 ya no
+ *      cuenta), fin_variable con hora_salida, y la duración de un culto normal.
  */
 
 declare(strict_types=1);
@@ -156,17 +156,17 @@ try {
     // ========================================================================
     $r = resumenMesAsistente($asis, $ini, $fin);
 
-    eqf(10.0, $r['horas_total'], 'A horas_total = 10.0  [exclusión + §10.1 + fin_variable + culto normal]');
-    eqf(6.5,  $r['horas_categorias'], 'A horas_categorias = 6.5 (recurrentes 4 + actividad 2.5)');
+    eqf(9.0,  $r['horas_total'], 'A horas_total = 9.0  [exclusión recurrentes+cultos+actividad en campaña + fin_variable + culto normal]');
+    eqf(5.5,  $r['horas_categorias'], 'A horas_categorias = 5.5 (recurrentes 4 + actividad 1.5; 03-21 excluido por campaña)');
     eqf(3.5,  $r['horas_cultos'], 'A horas_cultos = 3.5 (Miércoles 1.5 + Junta 2.0; 03-21 excluido)');
 
     $cats = mapBy($r['horas_por_categoria'], 'categoria', 'horas');
     eq(2, count($cats), 'A horas_por_categoria: 2 categorías');
     eqf(4.0, $cats['Enseñanza y discipulado'] ?? -1, 'A categoría Enseñanza = 4.0 (recurrente, sin el 03-21)');
-    eqf(2.5, $cats['Evangelismo y alcance'] ?? -1, 'A categoría Evangelismo = 2.5 (actividad)');
+    eqf(1.5, $cats['Evangelismo y alcance'] ?? -1, 'A categoría Evangelismo = 1.5 (actividad 03-06; 03-21 excluido por campaña)');
 
     $minh = mapBy($r['horas_por_ministerio'], 'ministerio', 'horas');
-    eqf(6.5, $minh['Pescadores SMOKE'] ?? -1, 'A ministerio "Pescadores SMOKE" = 6.5 (recurrente 4 + actividad 2.5)');
+    eqf(5.5, $minh['Pescadores SMOKE'] ?? -1, 'A ministerio "Pescadores SMOKE" = 5.5 (recurrente 4 + actividad 1.5)');
 
     eq(2, $r['cultos']['asistencias_total'], 'A cultos: 2 asistencias (03-21 excluida)');
     eqf(3.5, $r['cultos']['horas_total'], 'A cultos: 3.5 h');
@@ -176,7 +176,7 @@ try {
     eq(7, $r['fruto_campanias'], 'A fruto_campanias = 7');
 
     $fr = mapBy($r['frutos'], 'etiqueta', 'total');
-    eq(6, $fr['contactos'] ?? -1, 'A frutos: contactos = 6 (actividad, incl. 03-21 por §10.1)');
+    eq(4, $fr['contactos'] ?? -1, 'A frutos: contactos = 4 (actividad 03-06; el fruto 2 del 03-21 excluido por campaña)');
     eq(3, $fr['decisiones'] ?? -1, 'A frutos: decisiones = 3 (Pescadores en Junta)');
     check(!array_key_exists('bautizados', $fr), 'A frutos: bautizados AUSENTE (Bautizar del 03-21 excluido por campaña)');
 
@@ -186,7 +186,7 @@ try {
     $tend = tendenciaMensual($asis, 6, '2025-03');
     $tmap = mapBy($tend, 'mes', 'horas');
     eq(6, count($tend), 'B tendencia: 6 meses');
-    eqf(10.0, $tmap['2025-03'] ?? -1, 'B tendencia: 2025-03 = 10.0 h');
+    eqf(9.0, $tmap['2025-03'] ?? -1, 'B tendencia: 2025-03 = 9.0 h (actividad 03-21 excluida por campaña)');
     $restoTend = array_sum(array_map('floatval', $tmap)) - (float) ($tmap['2025-03'] ?? 0);
     eqf(0.0, $restoTend, 'B tendencia: meses sin datos = 0');
 
@@ -199,7 +199,7 @@ try {
     }
     check($fila !== null, 'C consolidado incluye al asistente de prueba');
     if ($fila !== null) {
-        eqf(10.0, $fila['horas_ministerial'], 'C horas_ministerial = 10.0');
+        eqf(9.0, $fila['horas_ministerial'], 'C horas_ministerial = 9.0 (recurrentes 4 + actividad 1.5 + cultos 3.5)');
         eqf(20.0, $fila['secular_h_sem'], 'C secular_h_sem = 20.0 (aparte, no sumado)');
         eq(2, $fila['asistencias_culto'], 'C asistencias_culto = 2');
         eq(3, (int) $fila['dias_mision'], 'C días de misión = 3');
@@ -210,7 +210,7 @@ try {
     // ========================================================================
     $d = detalleAsistente($asis, $ini, $fin);
     eq($asis, (int) ($d['asistente']['id'] ?? 0), 'D asistente correcto');
-    eqf(10.0, $d['resumen']['horas_total'], 'D resumen.horas_total = 10.0');
+    eqf(9.0, $d['resumen']['horas_total'], 'D resumen.horas_total = 9.0');
 
     eq(1, count($d['funciones']), 'D funciones: 1 (solo Pescadores; Bautizar del 03-21 excluido)');
     if ($d['funciones']) {

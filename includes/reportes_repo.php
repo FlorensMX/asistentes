@@ -8,10 +8,13 @@
  * Reglas de agregación (sección 6 del brief, NO reinterpretar):
  *  - Horas ministeriales = recurrentes confirmados + actividad variable + cultos,
  *    todo en horas. Los cultos NO tienen categoría: van en su bucket "Cultos".
- *  - SUSPENSIÓN por campaña: una fila de recurrente o de culto NO cuenta si su
- *    fecha cae dentro de un periodo_campania del mismo asistente (patrón
- *    NOT EXISTS), consistente con campanias_repo::diasSuspendidos(). La actividad
- *    variable SÍ cuenta en días de campaña (decisión §10.1, default).
+ *  - SUSPENSIÓN por campaña: una fila de recurrente, de culto o de actividad
+ *    variable NO cuenta si su fecha cae dentro de un periodo_campania del mismo
+ *    asistente (patrón NOT EXISTS), consistente con campanias_repo::diasSuspendidos().
+ *    La actividad variable también se EXCLUYE en días de campaña (decisión §10.1,
+ *    cerrada: excluir): un registro de actividad no guarda dónde ocurrió, así que
+ *    en campaña se atribuiría como local y corrompería el total de horas; por eso
+ *    esos días valen solo como días de misión (+ su fruto declarado y su reporte).
  *  - Campañas = DÍAS DE MISIÓN (se reusa campanias_repo::diasDeMision()); nunca
  *    se convierten a horas.
  *  - Trabajo secular = carga semanal declarada; se muestra aparte, NO se suma.
@@ -90,7 +93,7 @@ function _recurrentesHorasRaw(int $aid, string $ini, string $fin): array
     return $stmt->fetchAll();
 }
 
-/** Actividad variable del mes (NO se excluye por campaña; decisión §10.1). */
+/** Actividad variable del mes, excluyendo días de campaña (§10.1). */
 function _actividadHorasRaw(int $aid, string $ini, string $fin): array
 {
     $stmt = db()->prepare(
@@ -99,7 +102,10 @@ function _actividadHorasRaw(int $aid, string $ini, string $fin): array
                          ra.duracion_min / 60.0) AS horas
          FROM registros_actividad ra
          JOIN actividades act ON act.id = ra.actividad_id
-         WHERE ra.asistente_id = :aid AND ra.fecha BETWEEN :ini AND :fin'
+         WHERE ra.asistente_id = :aid AND ra.fecha BETWEEN :ini AND :fin
+           AND NOT EXISTS (SELECT 1 FROM periodos_campania pc
+                           WHERE pc.asistente_id = ra.asistente_id
+                             AND ra.fecha BETWEEN pc.fecha_inicio AND pc.fecha_fin)'
     );
     $stmt->execute(['aid' => $aid, 'ini' => $ini, 'fin' => $fin]);
     return $stmt->fetchAll();
@@ -153,12 +159,15 @@ function _cultosResumen(int $aid, string $ini, string $fin): array
 /** Frutos del mes (actividad + funciones de culto), unidos por etiqueta. */
 function _frutosMes(int $aid, string $ini, string $fin): array
 {
-    // (a) de actividad variable
+    // (a) de actividad variable (excl. campaña, §10.1: en campaña no cuenta el fruto)
     $a = db()->prepare(
         'SELECT act.etiqueta_fruto AS etiqueta, SUM(ra.fruto_cantidad) AS total
          FROM registros_actividad ra JOIN actividades act ON act.id = ra.actividad_id
          WHERE ra.asistente_id = :aid AND ra.fecha BETWEEN :ini AND :fin
            AND act.lleva_fruto = TRUE AND ra.fruto_cantidad IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM periodos_campania pc
+                           WHERE pc.asistente_id = ra.asistente_id
+                             AND ra.fecha BETWEEN pc.fecha_inicio AND pc.fecha_fin)
          GROUP BY act.etiqueta_fruto'
     );
     $a->execute(['aid' => $aid, 'ini' => $ini, 'fin' => $fin]);
@@ -322,13 +331,16 @@ function tendenciaMensual(int $aid, int $nMeses = 6, ?string $hastaYm = null): a
     );
     $q1->execute(['aid' => $aid, 'ini' => $ini, 'fin' => $fin]);
 
-    // Actividad variable por mes.
+    // Actividad variable por mes (excl. campaña, §10.1).
     $q2 = db()->prepare(
         "SELECT to_char(date_trunc('month', ra.fecha), 'YYYY-MM') AS mes,
                 SUM(COALESCE(EXTRACT(EPOCH FROM (ra.hora_fin - ra.hora_inicio)) / 3600.0,
                              ra.duracion_min / 60.0)) AS horas
          FROM registros_actividad ra
          WHERE ra.asistente_id = :aid AND ra.fecha BETWEEN :ini AND :fin
+           AND NOT EXISTS (SELECT 1 FROM periodos_campania pc
+                           WHERE pc.asistente_id = ra.asistente_id
+                             AND ra.fecha BETWEEN pc.fecha_inicio AND pc.fecha_fin)
          GROUP BY 1"
     );
     $q2->execute(['aid' => $aid, 'ini' => $ini, 'fin' => $fin]);
@@ -387,13 +399,16 @@ function consolidadoMes(string $ini, string $fin): array
     $recur = [];
     foreach ($qr->fetchAll() as $r) $recur[(int) $r['aid']] = (float) $r['horas'];
 
-    // Horas de actividad variable por asistente.
+    // Horas de actividad variable por asistente (excl. campaña, §10.1).
     $qa = db()->prepare(
         'SELECT ra.asistente_id AS aid,
                 SUM(COALESCE(EXTRACT(EPOCH FROM (ra.hora_fin - ra.hora_inicio)) / 3600.0,
                              ra.duracion_min / 60.0)) AS horas
          FROM registros_actividad ra
          WHERE ra.fecha BETWEEN :ini AND :fin
+           AND NOT EXISTS (SELECT 1 FROM periodos_campania pc
+                           WHERE pc.asistente_id = ra.asistente_id
+                             AND ra.fecha BETWEEN pc.fecha_inicio AND pc.fecha_fin)
          GROUP BY ra.asistente_id'
     );
     $qa->execute(['ini' => $ini, 'fin' => $fin]);
@@ -473,7 +488,12 @@ function _funcionesResumen(int $aid, string $ini, string $fin): array
     return $out;
 }
 
-/** Proyectos tocados por la actividad del mes, con observaciones y horas. */
+/**
+ * Proyectos tocados por la actividad del mes, con observaciones y horas.
+ * Excluye los días de campaña (§10.1): si la actividad de un día en campaña ya
+ * no cuenta como hora, sus horas de proyecto tampoco, para que el detalle
+ * reconcilie con el resumen.
+ */
 function _proyectosTocados(int $aid, string $ini, string $fin): array
 {
     $stmt = db()->prepare(
@@ -484,6 +504,9 @@ function _proyectosTocados(int $aid, string $ini, string $fin): array
          FROM registros_actividad ra
          JOIN proyectos p ON p.id = ra.proyecto_id
          WHERE ra.asistente_id = :aid AND ra.fecha BETWEEN :ini AND :fin
+           AND NOT EXISTS (SELECT 1 FROM periodos_campania pc
+                           WHERE pc.asistente_id = ra.asistente_id
+                             AND ra.fecha BETWEEN pc.fecha_inicio AND pc.fecha_fin)
          GROUP BY p.id, p.nombre, p.observaciones
          ORDER BY horas DESC NULLS LAST, p.nombre'
     );

@@ -16,6 +16,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../includes/api.php';
 require_once __DIR__ . '/../../includes/actividad_repo.php';
 require_once __DIR__ . '/../../includes/ministerios_repo.php';
+require_once __DIR__ . '/../../includes/campanias_repo.php';
 
 $u = apiInit();
 
@@ -35,6 +36,16 @@ if ($actividadId <= 0) jsonError('Selecciona una actividad.');
 
 $d = DateTimeImmutable::createFromFormat('Y-m-d', $fecha);
 if (!$d || $d->format('Y-m-d') !== $fecha) jsonError('Fecha inválida.');
+
+// Suspensión por campaña (§10.1, cerrada: excluir). En días dentro de un periodo
+// del asistente, la actividad variable NO cuenta como horas ni fruto: esos días
+// se representan solo como días de misión. Se bloquea en captura para no perder
+// silenciosamente el registro después en los agregados (mismo guard 409 que
+// recurrentes/cultos). El agregado vuelve a excluir por si la campaña se declara
+// después de capturar (fuente de verdad en reportes_repo.php).
+if (estaEnCampania((int) $u['id'], $fecha)) {
+    jsonError('Estás en campaña esos días; cuentan como días de misión, no como horas.', 409);
+}
 
 // La actividad debe existir y estar activa; tomamos lleva_fruto y nombre.
 $stmt = db()->prepare(
